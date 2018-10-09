@@ -43,6 +43,10 @@ namespace ns3 {
 				DoubleValue(1000.0 * 1024 * 1024),
 				MakeDoubleAccessor(&BEgressQueue::m_maxBytes),
 				MakeDoubleChecker<double>())
+			.AddTraceSource ("BeqEnqueue", "Enqueue a packet in the BEgressQueue. Multiple queue",
+					MakeTraceSourceAccessor (&BEgressQueue::m_traceBeqEnqueue))
+			.AddTraceSource ("BeqDequeue", "Dequeue a packet in the BEgressQueue. Multiple queue",
+					MakeTraceSourceAccessor (&BEgressQueue::m_traceBeqDequeue))
 			;
 
 		return tid;
@@ -118,6 +122,7 @@ namespace ns3 {
 		if (found)
 		{
 			Ptr<Packet> p = m_queues[qIndex]->Dequeue();
+			m_traceBeqDequeue(p, qIndex);
 			m_bytesInQueueTotal -= p->GetSize();
 			m_bytesInQueue[qIndex] -= p->GetSize();
 			m_rrlast = qIndex;
@@ -153,6 +158,7 @@ namespace ns3 {
 		if (found)
 		{
 			Ptr<Packet> p = m_queues[qIndex]->Dequeue();
+			m_traceBeqDequeue(p, qIndex);
 			m_bytesInQueueTotal -= p->GetSize();
 			m_bytesInQueue[qIndex] -= p->GetSize();
 			m_rrlast = qIndex;
@@ -210,6 +216,7 @@ namespace ns3 {
 		if (found)
 		{
 			Ptr<Packet> p = m_queues[qIndex]->Dequeue();
+			m_traceBeqDequeue(p, qIndex);
 			m_bytesInQueueTotal -= p->GetSize();
 			m_bytesInQueue[qIndex] -= p->GetSize();
 			m_bwsatisfied[qIndex] = m_bwsatisfied[qIndex] + Seconds(m_minBW[qIndex].CalculateTxTime(p->GetSize()));
@@ -261,6 +268,7 @@ namespace ns3 {
 		if (found)
 		{
 			Ptr<Packet> p = m_queues[qIndex]->Dequeue();
+			m_traceBeqDequeue(p, qIndex);
 			m_bytesInQueueTotal -= p->GetSize();
 			m_bytesInQueue[qIndex] -= p->GetSize();
 			if (qIndex != 0)
@@ -289,6 +297,7 @@ namespace ns3 {
 		{
 			NS_LOG_LOGIC("m_traceEnqueue (p)");
 			m_traceEnqueue(p);
+			m_traceBeqEnqueue(p, qIndex);
 
 			uint32_t size = p->GetSize();
 			m_nBytes += size;
@@ -418,6 +427,7 @@ namespace ns3 {
 		if (found)
 		{
 			Ptr<Packet> p = m_queues[qIndex]->Dequeue();
+			m_traceBeqDequeue(p, qIndex);
 			m_bytesInQueueTotal -= p->GetSize();
 			m_bytesInQueue[qIndex] -= p->GetSize();
 			m_rrlast = qIndex;

@@ -416,7 +416,7 @@ AsciiTraceHelper::DefaultReceiveSinkWithContext (Ptr<OutputStreamWrapper> stream
   sscanf(context.c_str(),"/NodeList/%d/DeviceList/%d/",&n,&d);
 
   //*stream->GetStream () << Simulator::Now ().GetSeconds () << " /" << n <<"/" << d << "| " << *p << std::endl;
-  *stream->GetStream () << std::setprecision(7) << Simulator::Now ().GetSeconds () << " /" << n << " " << *p << std::endl;
+  *stream->GetStream () << std::setprecision(7) << Simulator::Now ().GetSeconds () << " " << n << " " << d << " " << *p << std::endl;
 }
 
 void 

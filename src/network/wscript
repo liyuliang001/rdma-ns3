@@ -23,7 +23,7 @@ def build(bld):
         'model/tag.cc',
         'model/tag-buffer.cc',
         'model/trailer.cc',
-	'utils/address-utils.cc',
+        'utils/address-utils.cc',
         'utils/data-rate.cc',
         'utils/drop-tail-queue.cc',
         'utils/error-model.cc',
@@ -58,7 +58,8 @@ def build(bld):
         'helper/trace-helper.cc',
         'model/broadcom-node.cc',
         'helper/leaky-bucket-helper.cc',
-        'utils/leaky-bucket.cc'
+        'utils/leaky-bucket.cc',
+		'utils/custom-header.cc',
         ]
 
     network_test = bld.create_ns3_module_test_library('network')
@@ -74,7 +75,7 @@ def build(bld):
         'test/sequence-number-test-suite.cc',
         ]
 
-    headers = bld.new_task_gen(features=['ns3header'])
+    headers = bld(features='ns3header')
     headers.module = 'network'
     headers.source = [
         'model/address.h',
@@ -97,7 +98,7 @@ def build(bld):
         'model/tag.h',
         'model/tag-buffer.h',
         'model/trailer.h',
-      	'utils/address-utils.h',
+        'utils/address-utils.h',
         'utils/data-rate.h',
         'utils/drop-tail-queue.h',
         'utils/error-model.h',
@@ -136,11 +137,12 @@ def build(bld):
         'utils/broadcom-egress-queue.h',
         'model/broadcom-node.h',
         'helper/leaky-bucket-helper.h',
-        'utils/leaky-bucket.h'
-        #'helper/broadcom-node-container.h'
+        'utils/leaky-bucket.h',
+		'utils/custom-header.h',
+        #'helper/broadcom-node-container.h',
         ]
 
     if (bld.env['ENABLE_EXAMPLES']):
-        bld.add_subdirs('examples')
+        bld.recurse('examples')
 
     bld.ns3_python_bindings()

@@ -38,6 +38,8 @@
 #include "ns3/trace-helper.h"
 #include "point-to-point-helper.h"
 #include "qbb-helper.h"
+#include "ns3/custom-header.h"
+#include "trace-format.h"
 
 NS_LOG_COMPONENT_DEFINE ("QbbHelper");
 
@@ -207,15 +209,15 @@ QbbHelper::EnableAsciiInternal (
   Config::Connect (oss.str (), MakeBoundCallback (&AsciiTraceHelper::DefaultReceiveSinkWithContext, stream));
 
   oss.str ("");
-  oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxQueue/Enqueue";
+  oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxBeQueue/Enqueue";
   Config::Connect (oss.str (), MakeBoundCallback (&AsciiTraceHelper::DefaultEnqueueSinkWithContext, stream));
 
   oss.str ("");
-  oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxQueue/Dequeue";
+  oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxBeQueue/Dequeue";
   Config::Connect (oss.str (), MakeBoundCallback (&AsciiTraceHelper::DefaultDequeueSinkWithContext, stream));
 
   oss.str ("");
-  oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxQueue/Drop";
+  oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxBeQueue/Drop";
   Config::Connect (oss.str (), MakeBoundCallback (&AsciiTraceHelper::DefaultDropSinkWithContext, stream));
 
   oss.str ("");
@@ -306,6 +308,111 @@ QbbHelper::Install (std::string aName, std::string bName)
   Ptr<Node> a = Names::Find<Node> (aName);
   Ptr<Node> b = Names::Find<Node> (bName);
   return Install (a, b);
+}
+
+void QbbHelper::PacketEventCallback(FILE *file, Ptr<NetDevice> dev, Ptr<const Packet> p, uint32_t qidx, Event event, bool hasL2){
+	TraceFormat tr;
+
+	CustomHeader hdr((hasL2?CustomHeader::L2_Header:0) | CustomHeader::L3_Header | CustomHeader::L4_Header);
+	p->PeekHeader(hdr);
+
+	tr.event = event;
+	tr.node = dev->GetNode()->GetId();
+	tr.intf = dev->GetIfIndex();
+	tr.qidx = qidx;
+	tr.time = Simulator::Now().GetTimeStep();
+	tr.sip = hdr.sip;
+	tr.dip = hdr.dip;
+	tr.l3Prot = hdr.l3Prot;
+	tr.ecn = hdr.m_tos & 0x3;
+	switch (hdr.l3Prot){
+		case 0x6:
+			tr.data.sport = hdr.tcp.sport;
+			tr.data.dport = hdr.tcp.dport;
+			break;
+		case 0x11:
+			tr.data.sport = hdr.udp.sport;
+			tr.data.dport = hdr.udp.dport;
+			// SeqTsHeader
+			tr.data.seq = hdr.udp.seq;
+			tr.data.ts = hdr.udp.ts;
+			tr.data.pg = hdr.udp.pg;
+			break;
+		case 0xFC:
+		case 0xFD:
+			tr.ack.pg = hdr.ack.pg;
+			tr.ack.seq = hdr.ack.seq;
+			tr.ack.port = hdr.ack.port;
+			break;
+		case 0xFE:
+			tr.pfc.time = hdr.pfc.time;
+			tr.pfc.qlen = hdr.pfc.qlen;
+			tr.pfc.qIndex = hdr.pfc.qIndex;
+			break;
+		case 0xFF:
+			tr.cnp.fid = hdr.cnp.fid;
+			tr.cnp.qIndex = hdr.cnp.qIndex;
+			tr.cnp.qfb = hdr.cnp.qfb;
+			tr.cnp.ecnBits = hdr.cnp.ecnBits;
+			tr.cnp.total = hdr.cnp.total;
+			break;
+		default:
+			break;
+	}
+	tr.size = p->GetSize();//hdr.m_payloadSize;
+	tr.qlen = DynamicCast<QbbNetDevice>(dev)->GetQueue()->GetNBytes(qidx);
+	fwrite(&tr, sizeof(tr), 1, file);
+}
+
+void QbbHelper::MacRxDetailCallback (FILE* file, Ptr<NetDevice> dev, Ptr<const Packet> p){
+	PacketEventCallback(file, dev, p, 0, Recv, false);
+}
+
+void QbbHelper::EnqueueDetailCallback(FILE* file, Ptr<NetDevice> dev, Ptr<const Packet> p, uint32_t qidx){
+	PacketEventCallback(file, dev, p, qidx, Enqu, true);
+}
+
+void QbbHelper::DequeueDetailCallback(FILE* file, Ptr<NetDevice> dev, Ptr<const Packet> p, uint32_t qidx){
+	PacketEventCallback(file, dev, p, qidx, Dequ, true);
+}
+
+void QbbHelper::EnableTracingDevice(FILE *file, Ptr<NetDevice> nd){
+	uint32_t nodeid = nd->GetNode ()->GetId ();
+	uint32_t deviceid = nd->GetIfIndex ();
+	std::ostringstream oss;
+
+	oss << "/NodeList/" << nd->GetNode ()->GetId () << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/MacRx";
+	Config::ConnectWithoutContext (oss.str (), MakeBoundCallback (&QbbHelper::MacRxDetailCallback, file, nd));
+
+	oss.str ("");
+	oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxBeQueue/BeqEnqueue";
+	Config::ConnectWithoutContext (oss.str (), MakeBoundCallback (&QbbHelper::EnqueueDetailCallback, file, nd));
+
+	oss.str ("");
+	oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxBeQueue/BeqDequeue";
+	Config::ConnectWithoutContext (oss.str (), MakeBoundCallback (&QbbHelper::DequeueDetailCallback, file, nd));
+
+#if 0
+	oss.str ("");
+	oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/TxBeQueue/Drop";
+	Config::Connect (oss.str (), MakeBoundCallback (&AsciiTraceHelper::DefaultDropSinkWithContext, stream));
+
+	oss.str ("");
+	oss << "/NodeList/" << nodeid << "/DeviceList/" << deviceid << "/$ns3::QbbNetDevice/PhyRxDrop";
+	Config::Connect (oss.str (), MakeBoundCallback (&AsciiTraceHelper::DefaultDropSinkWithContext, stream));
+#endif
+}
+
+void QbbHelper::EnableTracing(FILE *file, NodeContainer node_container){
+  NetDeviceContainer devs;
+  for (NodeContainer::Iterator i = node_container.Begin (); i != node_container.End (); ++i)
+    {
+      Ptr<Node> node = *i;
+      for (uint32_t j = 0; j < node->GetNDevices (); ++j)
+        {
+		  EnableTracingDevice(file, node->GetDevice(j));
+        }
+    }
 }
 
 } // namespace ns3

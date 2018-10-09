@@ -44,6 +44,7 @@
 #include "ns3/ppp-header.h"
 #include "ns3/udp-header.h"
 #include "ns3/seq-ts-header.h"
+#include "ns3/pointer.h"
 
 #include <iostream>
 
@@ -174,6 +175,11 @@ namespace ns3 {
 				DoubleValue(500.0),
 				MakeDoubleAccessor(&QbbNetDevice::m_waitAckTimer),
 				MakeDoubleChecker<double>())
+			.AddAttribute ("TxBeQueue", 
+					"A queue to use as the transmit queue in the device.",
+					PointerValue (),
+					MakePointerAccessor (&QbbNetDevice::m_queue),
+					MakePointerChecker<Queue> ())
 			;
 
 		return tid;

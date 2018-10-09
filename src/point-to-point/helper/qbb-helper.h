@@ -27,6 +27,7 @@
 #include "ns3/node-container.h"
 #include "ns3/deprecated.h"
 #include "ns3/trace-helper.h"
+#include "trace-format.h"
 
 namespace ns3 {
 
@@ -144,6 +145,15 @@ public:
    * Saves you from having to construct a temporary NodeContainer.
    */
   NetDeviceContainer Install (std::string aNode, std::string bNode);
+
+  static void PacketEventCallback(FILE *file, Ptr<NetDevice>, Ptr<const Packet>, uint32_t qidx, Event event, bool hasL2);
+  static void MacRxDetailCallback (FILE* file, Ptr<NetDevice>, Ptr<const Packet> p);
+  static void EnqueueDetailCallback(FILE* file, Ptr<NetDevice>, Ptr<const Packet> p, uint32_t qidx);
+  static void DequeueDetailCallback(FILE* file, Ptr<NetDevice>, Ptr<const Packet> p, uint32_t qidx);
+
+  void EnableTracingDevice(FILE *file, Ptr<NetDevice>);
+
+  void EnableTracing(FILE *file, NodeContainer node_container);
 
 private:
   /**

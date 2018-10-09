@@ -1,8 +1,7 @@
 ## -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
 import sys
 
-import Options
-
+from waflib import Options
 import wutils
 
 def options(opt):
@@ -49,7 +48,7 @@ def configure(conf):
     conf.check_nonfatal(header_name='signal.h', define_name='HAVE_SIGNAL_H')
 
     # Check for POSIX threads
-    test_env = conf.env.copy()
+    test_env = conf.env.derive()
     if Options.platform != 'darwin' and Options.platform != 'cygwin':
         test_env.append_value('LINKFLAGS', '-pthread')
         test_env.append_value('CXXFLAGS', '-pthread')
@@ -148,6 +147,10 @@ def build(bld):
         'model/vector.cc',
         'model/fatal-impl.cc',
         'model/system-path.cc',
+        'model/hash-function.cc',
+        'model/hash-murmur3.cc',
+        'model/hash-fnv.cc',
+        'model/hash.cc',
         ]
 
     core_test = bld.create_ns3_module_test_library('core')
@@ -171,7 +174,7 @@ def build(bld):
         'test/watchdog-test-suite.cc',
         ]
 
-    headers = bld.new_task_gen(features=['ns3header'])
+    headers = bld(features='ns3header')
     headers.module = 'core'
     headers.source = [
         'model/nstime.h',
@@ -244,6 +247,11 @@ def build(bld):
         'model/fatal-impl.h',
         'model/system-path.h',
         'model/unused.h',
+        'model/math.h',
+        'model/hash-function.h',
+        'model/hash-murmur3.h',
+        'model/hash-fnv.h',
+        'model/hash.h',
         ]
 
     if sys.platform == 'win32':
@@ -306,7 +314,7 @@ def build(bld):
         core_test.source.extend(['test/rng-test-suite.cc'])
 
     if (bld.env['ENABLE_EXAMPLES']):
-        bld.add_subdirs('examples')
+        bld.recurse('examples')
 
     pymod = bld.ns3_python_bindings()
     if pymod is not None:
